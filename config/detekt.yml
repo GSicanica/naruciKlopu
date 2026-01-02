@@ -1,0 +1,209 @@
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+processors:
+  active: true
+
+console-reports:
+  active: true
+  exclude:
+    - 'ProjectStatisticsReport'
+    - 'ComplexityReport'
+    - 'NotificationReport'
+
+style:
+  MagicNumber:
+    active: false
+  MagicString:
+    active: false
+  WildcardImport:
+    active: true
+  UnusedPrivateMember:
+    active: true
+  OptionalUnit:
+    active: false
+  OptionalSemicolon:
+    active: true
+  ForbiddenComment:
+    active: true
+    values: ['TODO', 'FIXME', 'XXX']
+  RedundantVisibilityModifierRule:
+    active: true
+  UnnecessaryParentheses:
+    active: true
+  ReturnCount:
+    active: false
+  DataClassShouldBeImmutable:
+    active: false
+  UnnecessaryAbstractClass:
+    active: true
+  CollapsibleIfStatements:
+    active: true
+  BracesOnIfStatements:
+    active: false
+
+naming:
+  PackageNaming:
+    active: false
+  ClassNaming:
+    active: true
+    classPattern: '[A-Z][a-zA-Z0-9]*'
+  FunctionNaming:
+    active: true
+    functionPattern: '^[a-z][a-zA-Z0-9]*$'
+  VariableNaming:
+    active: true
+    variablePattern: '^[a-z][a-zA-Z0-9]*$'
+  ObjectPropertyNaming:
+    active: false
+  EnumNaming:
+    active: true
+  TopLevelPropertyNaming:
+    active: false
+  ForbiddenClassName:
+    active: false
+
+performance:
+  SpreadOperator:
+    active: false
+  UnnecessaryTemporaryInstantiation:
+    active: true
+  UnnecessaryPartOfBinaryExpression:
+    active: true
+
+potential-bugs:
+  DuplicateCaseInWhenExpression:
+    active: true
+  LateinitUsage:
+    active: false
+  UnsafeCast:
+    active: true
+  NullableToStringCall:
+    active: true
+  IgnoredReturnValue:
+    active: true
+  ImplicitDefaultLocale:
+    active: true
+  MissingWhenCase:
+    active: true
+  NullCheckOnMutableProperty:
+    active: true
+
+compose:
+  ComposableNaming:
+    active: false
+  MissingRemember:
+    active: false
+  ModifierReused:
+    active: false
+  PreviewAnnotationMissing:
+    active: false
+  MutableStateAutoboxing:
+    active: false
+  ReusedModifierParameter:
+    active: false
+  UnstableCollections:
+    active: false
+
+complexity:
+  TooManyFunctions:
+    active: false
+  LongParameterList:
+    active: false
+  LargeClass:
+    active: false
+  LongMethod:
+    active: true
+    threshold: 100
+  ComplexCondition:
+    active: true
+    threshold: 5
+  NestedBlockDepth:
+    active: true
+    threshold: 4
+  CognitiveComplexMethod:
+    active: true
+    threshold: 20
+  ComplexInterface:
+    active: false
+  LabeledExpression:
+    active: false
+
+comments:
+  UndocumentedPublicClass:
+    active: false
+  UndocumentedPublicFunction:
+    active: false
+  CommentOverPrivateFunction:
+    active: false
+  CommentOverPrivateProperty:
+    active: false
+  CommentOverPublicFunction:
+    active: false
+
+coroutines:
+  GlobalCoroutineUsage:
+    active: true
+  RedundantSuspendModifier:
+    active: true
+  InjectDispatcher:
+    active: true
+  SuspendFunWithCoroutineScopeReceiver:
+    active: true
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: true
+    excludes: ['IOException', 'CancellationException', 'TimeoutCancellationException']
+  SwallowedException:
+    active: true
+  ThrowingExceptionFromFinally:
+    active: true
+  InstanceOfCheckForException:
+    active: true
+  PrintStackTrace:
+    active: true
+  ThrowingNewInstanceOfSameException:
+    active: true
+  ExceptionRaisedInUnexpectedLocation:
+    active: true
+
+test-pattern:
+  active: true
+  patterns:
+    - value: '.*/test/.*'
+      exclude-rule-sets:
+        - 'comments'
+        - 'naming'
+        - 'complexity'
+      exclude-rules:
+        - 'TooGenericExceptionCaught'
+        - 'MagicNumber'
+        - 'MaxLineLength'
+
+formatting:
+  active: true
+  android: true
+  autoCorrect: true
+  Indentation:
+    active: true
+  MaximumLineLength:
+    active: true
+    maxLineLength: 140
+  NoWildcardImports:
+    active: true
+  NoTrailingSpaces:
+    active: true
+  NoMultipleSpaces:
+    active: true
+  NoConsecutiveBlankLines:
+    active: true
+  ParameterListWrapping:
+    active: false
+  CommentSpacing:
+    active: true
+  SpacingAroundColon:
+    active: true
+  Wrapping:
+    active: false
