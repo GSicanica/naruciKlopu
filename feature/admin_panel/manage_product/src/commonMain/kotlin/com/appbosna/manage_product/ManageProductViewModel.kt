@@ -1,0 +1,310 @@
+package com.appbosna.manage_product
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.appbosna.data.domain.AdminRepository
+import com.appbosna.data.remote.KmpFile
+import com.appbosna.shared.domain.Product
+import com.appbosna.shared.domain.Restaurant
+import com.appbosna.shared.util.RequestState
+import kotlin.time.ExperimentalTime
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
+data class ManageProductState(
+    val id: String = Uuid.random().toHexString(),
+    val createdAt: String = "",
+    val title: String = "",
+    val description: String = "",
+    val thumbnail: String = "",
+    val restaurantId: Int = 1,   // ⬅ ENUM UKLONJEN
+    val restaurantName: String = "",
+    val flavors: String = "",
+    val weight: Int? = null,
+    val price: Double = 0.0,
+    val isNew: Boolean = false,
+    val isPopular: Boolean = false,
+    val isDiscounted: Boolean = false
+)
+
+
+class ManageProductViewModel(
+    private val adminRepository: AdminRepository,
+    savedStateHandle: SavedStateHandle,
+) : ViewModel() {
+    private val productId = savedStateHandle.get<String>("id") ?: ""
+
+
+
+    var allRestaurants by mutableStateOf<List<Restaurant>>(emptyList())
+        private set
+
+    init {
+        // već imaš productId check, samo ispod dodaj ovo:
+        viewModelScope.launch {
+            allRestaurants = adminRepository.getRestaurants()
+        }
+    }
+
+
+    var screenState by mutableStateOf(ManageProductState())
+        private set
+
+    var thumbnailUploaderState: RequestState<Unit> by mutableStateOf(RequestState.Idle)
+        private set
+
+    val isFormValid: Boolean
+        get() = screenState.title.isNotEmpty() &&
+                screenState.description.isNotEmpty() &&
+                screenState.thumbnail.isNotEmpty() &&
+                screenState.price != 0.0
+
+    init {
+        viewModelScope.launch {
+            // 1) Učitaj restorane
+            allRestaurants = adminRepository.getRestaurants()
+
+            // 2) Učitaj proizvod tek kada su restorani dostupni
+            if (productId.isNotEmpty()) {
+                val selectedProduct = adminRepository.readProductById(productId)
+                if (selectedProduct.isSuccess()) {
+                    val product = selectedProduct.getSuccessData()
+
+                    updateId(product.id)
+                    updateCreatedAt(product.createdAt)
+                    updateTitle(product.title)
+                    updateDescription(product.description)
+                    updateThumbnail(product.thumbnail)
+                    updateThumbnailUploaderState(RequestState.Success(Unit))
+
+                    updateRestaurantId(product.restaurantId)
+
+                    // 🔥 NAJVAŽNIJE
+                    val restaurant = allRestaurants.firstOrNull { it.id == product.restaurantId }
+                    updateRestaurantName(restaurant?.name ?: "")
+
+                    updateFlavors(product.flavors)
+                    updateWeight(product.weight?.toIntOrNull())
+                    updatePrice(product.price.toDouble())
+                    updateNew(product.isNew)
+                    updatePopular(product.isPopular)
+                    updateDiscounted(product.isDiscounted)
+                }
+            }
+        }
+    }
+
+
+    fun updateId(value: String) {
+        screenState = screenState.copy(id = value)
+    }
+
+    fun updateCreatedAt(value: String) {
+        screenState = screenState.copy(createdAt = value)
+    }
+
+    fun updateTitle(value: String) {
+        screenState = screenState.copy(title = value)
+    }
+
+    fun updateDescription(value: String) {
+        screenState = screenState.copy(description = value)
+    }
+
+    fun updateThumbnail(value: String) {
+        screenState = screenState.copy(thumbnail = value)
+    }
+
+    fun updateThumbnailUploaderState(value: RequestState<Unit>) {
+        thumbnailUploaderState = value
+    }
+
+    fun updateRestaurantId(value: Int) {
+        screenState = screenState.copy(restaurantId = value)
+    }
+
+    fun updateRestaurantName(name: String) {
+        screenState = screenState.copy(restaurantName = name)
+    }
+
+    fun updateFlavors(value: String) {
+        screenState = screenState.copy(flavors = value)
+    }
+
+    fun updateWeight(value: Int?) {
+        screenState = screenState.copy(weight = value)
+    }
+
+    fun updatePrice(value: Double) {
+        screenState = screenState.copy(price = value)
+    }
+
+    fun updateNew(value: Boolean) {
+        screenState = screenState.copy(isNew = value)
+    }
+
+    fun updatePopular(value: Boolean) {
+        screenState = screenState.copy(isPopular = value)
+    }
+
+    fun updateDiscounted(value: Boolean) {
+        screenState = screenState.copy(isDiscounted = value)
+    }
+
+    fun createNewProduct(
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        viewModelScope.launch {
+            adminRepository.createNewProduct(
+                product = Product(
+                    id = screenState.id,
+                    title = screenState.title,
+                    description = screenState.description,
+                    thumbnail = screenState.thumbnail,
+                    restaurantId = screenState.restaurantId,
+                    flavors = screenState.flavors,
+                    weight = screenState.weight.toString(),
+                    price = screenState.price.toString(),
+                    isNew = screenState.isNew,
+                    isPopular = screenState.isPopular,
+                    isDiscounted = screenState.isDiscounted
+                ),
+                onSuccess = onSuccess,
+                onError = onError
+            )
+        }
+    }
+
+    fun uploadThumbnailToStorage(
+        file: KmpFile?,
+        onSuccess: () -> Unit,
+    ) {
+        if (file == null) {
+            updateThumbnailUploaderState(RequestState.Error("File is null. Error while selecting an image."))
+            return
+        }
+
+        updateThumbnailUploaderState(RequestState.Loading)
+
+        viewModelScope.launch {
+            try {
+                val downloadUrl = adminRepository.uploadImageToStorage(file)
+
+                if (downloadUrl.isNullOrEmpty()) {
+                    throw Exception("Failed to retrieve a download URL after the upload.")
+                }
+
+                productId.takeIf { it.isNotEmpty() }?.let { id ->
+                    adminRepository.updateProductThumbnail(
+                        productId = id,
+                        downloadUrl = downloadUrl,
+                        onSuccess = {
+                            onSuccess()
+                            updateThumbnailUploaderState(RequestState.Success(Unit))
+                            updateThumbnail(downloadUrl)
+                        },
+                        onError = { message ->
+                            updateThumbnailUploaderState(RequestState.Error(message))
+                        }
+                    )
+                } ?: run {
+                    onSuccess()
+                    updateThumbnailUploaderState(RequestState.Success(Unit))
+                    updateThumbnail(downloadUrl)
+                }
+            } catch (e: Exception) {
+                updateThumbnailUploaderState(RequestState.Error("Error while uploading: $e"))
+            }
+        }
+    }
+
+    fun updateProduct(
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        if (isFormValid) {
+            viewModelScope.launch {
+                adminRepository.updateProduct(
+                    product = Product(
+                        id = screenState.id,
+                        createdAt = screenState.createdAt,
+                        title = screenState.title,
+                        description = screenState.description,
+                        thumbnail = screenState.thumbnail,
+                        restaurantId = screenState.restaurantId,
+                        flavors = screenState.flavors,
+                        weight = screenState.weight.toString(),
+                        price = screenState.price.toString(),
+                        isNew = screenState.isNew,
+                        isPopular = screenState.isPopular,
+                        isDiscounted = screenState.isDiscounted
+                    ),
+                    onSuccess = onSuccess,
+                    onError = onError
+                )
+            }
+        } else {
+            onError("Please fill in the information.")
+        }
+    }
+
+    fun deleteThumbnailFromStorage(
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        viewModelScope.launch {
+            adminRepository.deleteImageFromStorage(
+                downloadUrl = screenState.thumbnail,
+                onSuccess = {
+                    productId.takeIf { it.isNotEmpty() }?.let { id ->
+                        viewModelScope.launch {
+                            adminRepository.updateProductThumbnail(
+                                productId = id,
+                                downloadUrl = "",
+                                onSuccess = {
+                                    updateThumbnail(value = "")
+                                    updateThumbnailUploaderState(RequestState.Idle)
+                                    onSuccess()
+                                },
+                                onError = { message -> onError(message) }
+                            )
+                        }
+                    } ?: run {
+                        updateThumbnail(value = "")
+                        updateThumbnailUploaderState(RequestState.Idle)
+                        onSuccess()
+                    }
+                },
+                onError = onError
+            )
+        }
+    }
+
+    fun deleteProduct(
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        productId.takeIf { it.isNotEmpty() }?.let { id ->
+            viewModelScope.launch {
+                adminRepository.deleteProduct(
+                    productId = id,
+                    onSuccess = {
+                        deleteThumbnailFromStorage(
+                            onSuccess = {},
+                            onError = {}
+                        )
+                        onSuccess()
+                    },
+                    onError = { message -> onError(message) }
+                )
+            }
+        }
+    }
+}

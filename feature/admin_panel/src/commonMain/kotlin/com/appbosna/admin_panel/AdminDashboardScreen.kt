@@ -1,0 +1,419 @@
+package com.appbosna.admin_panel
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.appbosna.admin_panel.component.AnimatedChartContainer
+import com.appbosna.admin_panel.component.AnimatedMetricCardsRow
+import com.appbosna.admin_panel.component.DashboardLoadingState
+import com.appbosna.admin_panel.component.EnhancedTopSellingProducts
+import com.appbosna.admin_panel.component.RevenueChart
+import com.appbosna.admin_panel.component.SimpleRevenueChart
+import com.appbosna.data.domain.DashboardAnalytics
+import com.appbosna.data.domain.DateRange
+import com.appbosna.data.domain.UserStats
+import com.appbosna.shared.component.ErrorCard
+import com.appbosna.shared.fonts.BebasNeueFont
+import com.appbosna.shared.fonts.ButtonPrimary
+import com.appbosna.shared.fonts.FontSize
+import com.appbosna.shared.fonts.IconPrimary
+import com.appbosna.shared.fonts.Resources
+import com.appbosna.shared.fonts.Surface
+import com.appbosna.shared.fonts.TextPrimary
+import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.viewmodel.koinViewModel
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminDashboardScreen(
+    navigateBack: () -> Unit
+) {
+
+    val viewModel = koinViewModel<AdminDashboardViewModel>()
+    val state by viewModel.state.collectAsState()
+
+    Scaffold(
+        containerColor = Surface,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Dashboard",
+                        fontFamily = BebasNeueFont(),
+                        fontSize = FontSize.EXTRA_LARGE,
+                        color = TextPrimary
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = navigateBack) {
+                        Icon(
+                            painter = painterResource(Resources.Icon.BackArrow),
+                            contentDescription = "Back",
+                            tint = IconPrimary
+                        )
+                    }
+                },
+                actions = {
+                    DateRangeSelectorButton(
+                        selectedDateRange = state.selectedDateRange,
+                        onDateRangeChanged = { dateRange ->
+                            viewModel.onEvent(AdminDashboardEvent.DateRangeChanged(dateRange))
+                        }
+                    )
+
+                    IconButton(
+                        onClick = { viewModel.onEvent(AdminDashboardEvent.RefreshData) }
+                    ) {
+                        Icon(
+                            painter = painterResource(Resources.Icon.Book),
+                            contentDescription = "Refresh",
+                            tint = IconPrimary
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Surface
+                )
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            when {
+                state.isLoading -> {
+                    DashboardLoadingState()
+                }
+                state.hasError -> {
+                    ErrorContent(
+                        errorMessage = state.errorMessage ?: "Unknown error",
+                        onRetry = { viewModel.onEvent(AdminDashboardEvent.RefreshData) },
+                        onDismiss = { viewModel.onEvent(AdminDashboardEvent.ClearError) }
+                    )
+                }
+                state.hasData -> {
+                    DashboardContent(
+                        analytics = state.dashboardAnalytics!!,
+                        isRefreshing = state.isRefreshing
+                    )
+                }
+                else -> {
+                    EmptyContent()
+                }
+            }
+
+
+        }
+    }
+}
+
+@Composable
+private fun DateRangeSelectorButton(
+    selectedDateRange: DateRange,
+    onDateRangeChanged: (DateRange) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedOption = DateRangeOption.fromDateRange(selectedDateRange) ?: DateRangeOption.LAST_WEEK
+
+    Box {
+        TextButton(
+            onClick = { expanded = true }
+        ) {
+            Text(
+                text = selectedOption.displayName,
+                color = TextPrimary,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            DateRangeOption.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { 
+                        Text(
+                            text = option.displayName,
+                            color = if (option == selectedOption) ButtonPrimary else TextPrimary
+                        )
+                    },
+                    onClick = {
+                        onDateRangeChanged(option.dateRange)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ErrorContent(
+    errorMessage: String,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        ErrorCard(
+            message = errorMessage,
+            modifier = Modifier.padding(16.dp)
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = onRetry,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = ButtonPrimary
+                )
+            ) {
+                Text("Retry")
+            }
+            
+            TextButton(
+                onClick = onDismiss
+            ) {
+                Text(
+                    text = "Dismiss",
+                    color = TextPrimary.copy(alpha = 0.7f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyContent() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "No data available",
+            color = TextPrimary,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun DashboardContent(
+    analytics: DashboardAnalytics,
+    isRefreshing: Boolean
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        if (isRefreshing) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = ButtonPrimary,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+            }
+        }
+
+        item {
+            AnimatedMetricCardsRow(
+                totalRevenue = analytics.totalRevenue,
+                totalOrders = analytics.totalOrders,
+                averageOrderValue = analytics.averageOrderValue
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(24.dp)) }
+
+        item {
+            AnimatedChartContainer(
+                delayMillis = 300
+            ) {
+                RevenueChart(
+                    dailySummaries = analytics.dailySummaries,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+
+        item {
+            AnimatedChartContainer(
+                delayMillis = 500
+            ) {
+                SimpleRevenueChart(
+                    dailySummaries = analytics.dailySummaries,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(24.dp)) }
+
+        item {
+            EnhancedTopSellingProducts(
+                products = analytics.topSellingProducts,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(24.dp)) }
+
+        item { UserStatisticsSection(userStats = analytics.userStats) }
+    }
+}
+
+@Composable
+private fun KeyMetricsSection(analytics: DashboardAnalytics) {
+    Text(
+        text = "Key Metrics",
+        fontFamily = BebasNeueFont(),
+        fontSize = FontSize.LARGE,
+        color = TextPrimary,
+        modifier = Modifier.padding(bottom = 12.dp)
+    )
+    
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        MetricCard(
+            title = "Total Revenue",
+            value = "$${analytics.totalRevenue.toInt()}",
+            modifier = Modifier.weight(1f)
+        )
+        
+        MetricCard(
+            title = "Total Orders",
+            value = analytics.totalOrders.toString(),
+            modifier = Modifier.weight(1f)
+        )
+        
+        MetricCard(
+            title = "Avg Order Value",
+            value = "$${analytics.averageOrderValue.toInt()}",
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun MetricCard(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = Surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodySmall,
+                color = TextPrimary.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = value,
+                fontFamily = BebasNeueFont(),
+                fontSize = FontSize.MEDIUM,
+                color = TextPrimary,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+private fun UserStatisticsSection(userStats: UserStats) {
+    Text(
+        text = "User Statistics",
+        fontFamily = BebasNeueFont(),
+        fontSize = FontSize.LARGE,
+        color = TextPrimary,
+        modifier = Modifier.padding(bottom = 12.dp)
+    )
+    
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        MetricCard(
+            title = "Total Users",
+            value = userStats.totalUsers.toString(),
+            modifier = Modifier.weight(1f)
+        )
+        
+        MetricCard(
+            title = "New Today",
+            value = userStats.newUsersToday.toString(),
+            modifier = Modifier.weight(1f)
+        )
+        
+        MetricCard(
+            title = "New This Week",
+            value = userStats.newUsersThisWeek.toString(),
+            modifier = Modifier.weight(1f)
+        )
+    }
+} 
