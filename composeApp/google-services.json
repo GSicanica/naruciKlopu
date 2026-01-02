@@ -1,0 +1,43 @@
+{
+  "project_info": {
+    "project_number": "846557333850",
+    "project_id": "naruciklpi",
+    "storage_bucket": "naruciklpi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:846557333850:android:ed9ba4a392253a560f4b63",
+        "android_client_info": {
+          "package_name": "com.appbosna.naruciklpi"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "846557333850-ot1vil7m18e31ds7ripg1f3ojrnkjtpd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.appbosna.naruciklpi",
+            "certificate_hash": "58967ededceff4fc7bdc10b45fd24096a27301af"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPdXstsMCnx_WJc6SjZQ31TvDS3-TYIWg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "846557333850-5fv9s530b06rbstuf74a7jg09mmfg98c.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

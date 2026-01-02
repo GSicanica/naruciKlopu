@@ -1,0 +1,56 @@
+<!-- res/drawable/ic_splash_logo.xml -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="128"
+    android:viewportHeight="128">
+
+  <group android:pivotX="64" android:pivotY="64">
+    <!-- Kupola (narančasta) -->
+    <path
+        android:name="dome"
+        android:pathData="M20,72 Q64,28 108,72"
+        android:fillColor="#FF9800"
+        android:strokeColor="#FFA726"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Drška (žuta) -->
+    <path
+        android:name="handle"
+        android:pathData="M56,32 Q64,24 72,32"
+        android:fillColor="#FFD54F"
+        android:strokeColor="#FFF176"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Vrat drške (narančasta) -->
+    <path
+        android:name="stem"
+        android:pathData="M64,32 V40"
+        android:fillColor="#FFA726"
+        android:strokeColor="#FFB74D"
+        android:strokeWidth="4"
+        android:strokeLineCap="round" />
+
+    <!-- Baza poslužavnika (crvenkasto-narančasta) -->
+    <path
+        android:name="base"
+        android:pathData="M28,88 H100"
+        android:fillColor="#E65100"
+        android:strokeColor="#FF7043"
+        android:strokeWidth="5"
+        android:strokeLineCap="round" />
+
+    <!-- Rub poslužavnika (svijetla narančasta) -->
+    <path
+        android:name="lip"
+        android:pathData="M40,96 H88"
+        android:fillColor="#FFB74D"
+        android:strokeColor="#FFE082"
+        android:strokeWidth="3"
+        android:strokeLineCap="round" />
+  </group>
+</vector>
